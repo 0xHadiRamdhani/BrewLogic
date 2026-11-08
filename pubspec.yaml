@@ -1,0 +1,56 @@
+name: brewlogic
+description: "BrewLogic — asisten pintar dan brew journal untuk coffee homebrewers."
+publish_to: "none"
+version: 1.1.0+2
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # UI adaptif: Cupertino (iOS, termasuk Liquid Glass iOS 26+) / Material (Android).
+  adaptive_platform_ui: ^1.0.2
+
+  # State management (MVVM: ChangeNotifier sebagai ViewModel).
+  provider: ^6.1.5+1
+
+  # Penyimpanan lokal untuk Brew Journal dan cache input terakhir.
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  wakelock_plus: ^1.8.2
+  audioplayers: ^6.8.1
+  flutter_local_notifications: ^23.0.0
+  timezone: ^0.11.2
+  image_picker: ^1.2.4
+  share_plus: ^13.3.1
+  file_picker: ^13.3.2
+  path_provider: ^2.1.6
+  change_package_name: ^1.1.1
+  flutter_launcher_icons: ^0.14.4
+  url_launcher: ^6.3.3
+  lottie: ^3.8.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/developer.jpg
+    - assets/images/icons.jpg
+    - assets/animations/pour.json
+    - assets/sounds/phase.wav
+    - assets/sounds/done.wav
+  fonts:
+    - family: PixelifySans
+      fonts:
+        - asset: assets/fonts/PixelifySans.ttf
+    - family: DMSans
+      fonts:
+        - asset: assets/fonts/DMSans.ttf
