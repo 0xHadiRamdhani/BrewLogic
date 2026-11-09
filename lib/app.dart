@@ -12,6 +12,7 @@ import 'services/timer_alerts.dart';
 import 'viewmodels/bean_viewmodel.dart';
 import 'viewmodels/brew_viewmodel.dart';
 import 'viewmodels/journal_viewmodel.dart';
+import 'viewmodels/mocktail_viewmodel.dart';
 import 'viewmodels/recipe_viewmodel.dart';
 import 'viewmodels/settings_viewmodel.dart';
 import 'viewmodels/shell_navigation.dart';
@@ -52,6 +53,9 @@ class BrewLogicApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<RecipeViewModel>(
           create: (_) => RecipeViewModel(repository: repository),
+        ),
+        ChangeNotifierProvider<MocktailViewModel>(
+          create: (_) => MocktailViewModel(repository: repository),
         ),
         ChangeNotifierProvider<ShellNavigation>(
           create: (_) => ShellNavigation(),

@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/brew_model.dart';
+import '../models/mocktail_model.dart';
 import 'backup_service.dart';
 import 'journal_repository.dart';
 
@@ -19,11 +20,13 @@ class ImportResult {
     required this.addedBeans,
     required this.alreadyPresent,
     required this.invalid,
+    this.addedMocktails = 0,
   });
 
   final int addedEntries;
   final int addedRecipes;
   final int addedBeans;
+  final int addedMocktails;
 
   /// Item yang idnya sudah ada sehingga dilewati (tidak menimpa).
   final int alreadyPresent;
@@ -31,12 +34,13 @@ class ImportResult {
   /// Item rusak di dalam berkas.
   final int invalid;
 
-  int get added => addedEntries + addedRecipes + addedBeans;
+  int get added => addedEntries + addedRecipes + addedBeans + addedMocktails;
 
   String get summary {
     final List<String> parts = <String>[
       if (addedEntries > 0) '$addedEntries catatan',
       if (addedRecipes > 0) '$addedRecipes resep',
+      if (addedMocktails > 0) '$addedMocktails resep mocktail',
       if (addedBeans > 0) '$addedBeans biji',
     ];
     final String head = parts.isEmpty
@@ -65,6 +69,7 @@ class DataTransferService {
     entries: _repository.getAll(),
     recipes: _repository.getRecipes(),
     beans: _repository.getBeans(),
+    mocktails: _repository.getMocktails(),
     now: now,
   );
 
@@ -82,6 +87,10 @@ class DataTransferService {
         .getRecipes()
         .map((BrewRecipe r) => r.id)
         .toSet();
+    final Set<String> mocktailIds = _repository
+        .getMocktails()
+        .map((MocktailRecipe m) => m.id)
+        .toSet();
     final Set<String> beanIds = _repository
         .getBeans()
         .map((BrewBean b) => b.id)
@@ -90,6 +99,7 @@ class DataTransferService {
     int entries = 0;
     int recipes = 0;
     int beans = 0;
+    int mocktails = 0;
     int present = 0;
 
     for (final BrewEntry e in data.entries) {
@@ -108,6 +118,14 @@ class DataTransferService {
         present++;
       }
     }
+    for (final MocktailRecipe m in data.mocktails) {
+      if (mocktailIds.add(m.id)) {
+        await _repository.saveMocktail(m);
+        mocktails++;
+      } else {
+        present++;
+      }
+    }
     for (final BrewBean b in data.beans) {
       if (beanIds.add(b.id)) {
         await _repository.saveBean(b);
@@ -120,6 +138,7 @@ class DataTransferService {
       addedEntries: entries,
       addedRecipes: recipes,
       addedBeans: beans,
+      addedMocktails: mocktails,
       alreadyPresent: present,
       invalid: data.skipped,
     );

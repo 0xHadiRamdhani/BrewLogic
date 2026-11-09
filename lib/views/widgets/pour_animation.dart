@@ -73,22 +73,14 @@ class _PourAnimationState extends State<PourAnimation>
             _controller.value > _pourEnd) {
           _controller.value = 0;
         }
-        _controller.repeat(
-          min: 0,
-          max: _pourEnd,
-          period: duration * _pourEnd,
-        );
+        _controller.repeat(min: 0, max: _pourEnd, period: duration * _pourEnd);
       case BrewTimerStatus.paused:
         _controller.stop();
       case BrewTimerStatus.idle:
       case BrewTimerStatus.finished:
         _controller
           ..value = _pourEnd
-          ..repeat(
-            min: _pourEnd,
-            max: 1,
-            period: duration * (1 - _pourEnd),
-          );
+          ..repeat(min: _pourEnd, max: 1, period: duration * (1 - _pourEnd));
     }
   }
 

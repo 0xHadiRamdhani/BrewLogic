@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/brew_model.dart';
+import '../models/mocktail_model.dart';
 
 /// File cadangan tidak valid atau berasal dari versi yang lebih baru.
 class BackupException implements Exception {
@@ -18,15 +19,20 @@ class BackupData {
     required this.entries,
     required this.recipes,
     required this.beans,
+    this.mocktails = const <MocktailRecipe>[],
     this.skipped = 0,
   });
 
   final List<BrewEntry> entries;
   final List<BrewRecipe> recipes;
   final List<BrewBean> beans;
+
+  /// Resep mocktail; kosong pada cadangan lama yang belum memuatnya.
+  final List<MocktailRecipe> mocktails;
   final int skipped;
 
-  int get total => entries.length + recipes.length + beans.length;
+  int get total =>
+      entries.length + recipes.length + beans.length + mocktails.length;
 }
 
 /// Mengubah data jurnal, resep, dan biji menjadi JSON/CSV dan sebaliknya.
@@ -48,6 +54,7 @@ class BackupService {
     required List<BrewRecipe> recipes,
     required List<BrewBean> beans,
     required DateTime now,
+    List<MocktailRecipe> mocktails = const <MocktailRecipe>[],
   }) {
     final Map<String, Object?> root = <String, Object?>{
       'app': appId,
@@ -56,6 +63,7 @@ class BackupService {
       'entries': entries.map(_entryToJson).toList(),
       'recipes': recipes.map(_recipeToJson).toList(),
       'beans': beans.map(_beanToJson).toList(),
+      'mocktails': mocktails.map(_mocktailToJson).toList(),
     };
     return const JsonEncoder.withIndent('  ').convert(root);
   }
@@ -109,6 +117,7 @@ class BackupService {
       entries: parse<BrewEntry>(root['entries'], _entryFromJson),
       recipes: parse<BrewRecipe>(root['recipes'], _recipeFromJson),
       beans: parse<BrewBean>(root['beans'], _beanFromJson),
+      mocktails: parse<MocktailRecipe>(root['mocktails'], _mocktailFromJson),
       skipped: skipped,
     );
   }
@@ -206,6 +215,26 @@ class BackupService {
     'secondPourSeconds': r.customization.secondPourSeconds,
   };
 
+  static Map<String, Object?> _mocktailToJson(
+    MocktailRecipe m,
+  ) => <String, Object?>{
+    'id': m.id,
+    'name': m.name,
+    'createdAt': m.createdAt.millisecondsSinceEpoch,
+    'servings': m.spec.servings,
+    'glassMl': m.spec.glassMl,
+    'base': m.spec.base.name,
+    'sweetness': m.spec.sweetness.name,
+    'method': m.spec.method.name,
+    'useIce': m.spec.useIce,
+    'useCitrus': m.spec.useCitrus,
+    'syrups': <Object?>[
+      for (final MocktailSyrup s in m.spec.syrups)
+        <String, Object?>{'name': s.name, 'parts': s.parts},
+    ],
+    'garnishes': m.spec.garnishes.map((MocktailGarnish g) => g.name).toList(),
+  };
+
   static Map<String, Object?> _beanToJson(BrewBean b) => <String, Object?>{
     'id': b.id,
     'name': b.name,
@@ -283,6 +312,71 @@ class BackupService {
         bloomSeconds: _int(j['bloomSeconds']),
         firstPourSeconds: _int(j['firstPourSeconds']),
         secondPourSeconds: _int(j['secondPourSeconds']),
+      ),
+    );
+  }
+
+  static MocktailRecipe? _mocktailFromJson(Map<String, Object?> j) {
+    final String? id = _str(j['id']);
+    final String? name = _str(j['name']);
+    final int? createdAt = _int(j['createdAt']);
+    final Object? rawSyrups = j['syrups'];
+    if (id == null ||
+        name == null ||
+        createdAt == null ||
+        rawSyrups is! List<Object?>) {
+      return null;
+    }
+    final List<MocktailSyrup> syrups = <MocktailSyrup>[];
+    for (final Object? item in rawSyrups) {
+      if (item is! Map<String, Object?>) {
+        continue;
+      }
+      final String? syrupName = _str(item['name']);
+      if (syrupName == null || syrups.length >= MocktailSpec.maxSyrups) {
+        continue;
+      }
+      syrups.add(
+        MocktailSyrup(
+          _cut(syrupName, 20),
+          parts: (_int(item['parts']) ?? 1).clamp(
+            MocktailSpec.minParts,
+            MocktailSpec.maxParts,
+          ),
+        ),
+      );
+    }
+    if (syrups.isEmpty) {
+      return null;
+    }
+    final Object? rawGarnishes = j['garnishes'];
+    return MocktailRecipe(
+      id: id,
+      name: _cut(name, _maxName),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(createdAt),
+      spec: MocktailSpec(
+        servings: (_int(j['servings']) ?? 1).clamp(
+          MocktailSpec.minServings,
+          MocktailSpec.maxServings,
+        ),
+        glassMl: (_int(j['glassMl']) ?? 300).clamp(
+          MocktailSpec.minGlassMl,
+          MocktailSpec.maxGlassMl,
+        ),
+        base: _enum(MocktailBase.values, j['base']) ?? MocktailBase.soda,
+        sweetness:
+            _enum(MocktailSweetness.values, j['sweetness']) ??
+            MocktailSweetness.normal,
+        method:
+            _enum(MocktailMethod.values, j['method']) ?? MocktailMethod.build,
+        useIce: j['useIce'] is bool ? j['useIce']! as bool : true,
+        useCitrus: j['useCitrus'] is bool ? j['useCitrus']! as bool : true,
+        syrups: syrups,
+        garnishes: <MocktailGarnish>{
+          if (rawGarnishes is List<Object?>)
+            for (final Object? g in rawGarnishes)
+              ?_enum(MocktailGarnish.values, g),
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:hive/hive.dart';
 
 import 'brew_model.dart';
+import 'mocktail_model.dart';
 
 /// Type id Hive. Jangan diubah setelah rilis agar data lama tetap terbaca.
 abstract final class BrewTypeIds {
@@ -9,6 +10,7 @@ abstract final class BrewTypeIds {
   static const int roastLevel = 2;
   static const int brewRecipe = 3;
   static const int brewBean = 4;
+  static const int mocktailRecipe = 5;
 }
 
 /// Mendaftarkan semua adapter. Aman dipanggil berulang.
@@ -27,6 +29,9 @@ void registerBrewAdapters() {
   }
   if (!Hive.isAdapterRegistered(BrewTypeIds.brewBean)) {
     Hive.registerAdapter(BrewBeanAdapter());
+  }
+  if (!Hive.isAdapterRegistered(BrewTypeIds.mocktailRecipe)) {
+    Hive.registerAdapter(MocktailRecipeAdapter());
   }
 }
 
@@ -247,5 +252,105 @@ class BrewRecipeAdapter extends TypeAdapter<BrewRecipe> {
       ..write(obj.customization.firstPourSeconds)
       ..writeByte(9)
       ..write(obj.customization.secondPourSeconds);
+  }
+}
+
+T _enumAt<T>(List<T> values, Object? index, T fallback) =>
+    index is int && index >= 0 && index < values.length
+    ? values[index]
+    : fallback;
+
+/// Adapter resep mocktail. Enum disimpan sebagai indeks, hiasan sebagai bitmask,
+/// dan sirup sebagai dua daftar paralel (nama dan bagian).
+class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
+  @override
+  final int typeId = BrewTypeIds.mocktailRecipe;
+
+  @override
+  MocktailRecipe read(BinaryReader reader) {
+    final int numOfFields = reader.readByte();
+    final Map<int, dynamic> f = <int, dynamic>{
+      for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
+    };
+    final List<String> names =
+        (f[10] as List<dynamic>?)?.whereType<String>().toList() ?? <String>[];
+    final List<int> parts =
+        (f[11] as List<dynamic>?)?.whereType<int>().toList() ?? <int>[];
+    final int mask = (f[12] as int?) ?? 0;
+    return MocktailRecipe(
+      id: f[0] as String,
+      name: (f[1] as String?) ?? 'Mocktail',
+      createdAt: DateTime.fromMillisecondsSinceEpoch(f[2] as int),
+      spec: MocktailSpec(
+        servings: ((f[3] as int?) ?? 1).clamp(
+          MocktailSpec.minServings,
+          MocktailSpec.maxServings,
+        ),
+        glassMl: ((f[4] as int?) ?? 300).clamp(
+          MocktailSpec.minGlassMl,
+          MocktailSpec.maxGlassMl,
+        ),
+        base: _enumAt(MocktailBase.values, f[5], MocktailBase.soda),
+        sweetness: _enumAt(
+          MocktailSweetness.values,
+          f[6],
+          MocktailSweetness.normal,
+        ),
+        method: _enumAt(MocktailMethod.values, f[7], MocktailMethod.build),
+        useIce: (f[8] as bool?) ?? true,
+        useCitrus: (f[9] as bool?) ?? true,
+        syrups: <MocktailSyrup>[
+          for (int i = 0; i < names.length; i++)
+            MocktailSyrup(
+              names[i],
+              parts: (i < parts.length ? parts[i] : 1).clamp(
+                MocktailSpec.minParts,
+                MocktailSpec.maxParts,
+              ),
+            ),
+        ],
+        garnishes: <MocktailGarnish>{
+          for (final MocktailGarnish g in MocktailGarnish.values)
+            if (mask & (1 << g.index) != 0) g,
+        },
+      ),
+    );
+  }
+
+  @override
+  void write(BinaryWriter writer, MocktailRecipe obj) {
+    final MocktailSpec s = obj.spec;
+    int mask = 0;
+    for (final MocktailGarnish g in s.garnishes) {
+      mask |= 1 << g.index;
+    }
+    writer
+      ..writeByte(13)
+      ..writeByte(0)
+      ..write(obj.id)
+      ..writeByte(1)
+      ..write(obj.name)
+      ..writeByte(2)
+      ..write(obj.createdAt.millisecondsSinceEpoch)
+      ..writeByte(3)
+      ..write(s.servings)
+      ..writeByte(4)
+      ..write(s.glassMl)
+      ..writeByte(5)
+      ..write(s.base.index)
+      ..writeByte(6)
+      ..write(s.sweetness.index)
+      ..writeByte(7)
+      ..write(s.method.index)
+      ..writeByte(8)
+      ..write(s.useIce)
+      ..writeByte(9)
+      ..write(s.useCitrus)
+      ..writeByte(10)
+      ..write(s.syrups.map((MocktailSyrup x) => x.name).toList())
+      ..writeByte(11)
+      ..write(s.syrups.map((MocktailSyrup x) => x.parts).toList())
+      ..writeByte(12)
+      ..write(mask);
   }
 }

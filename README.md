@@ -22,11 +22,18 @@ Versi saat ini: **1.1.0 (build 2)**.
 - **Brew journal**: catat setiap seduhan dengan rating biji kopi, tag rasa, foto,
   dan catatan. Dikelompokkan per hari (Hari ini, Kemarin), cari dan saring, geser
   untuk menghapus.
-- **Resep favorit** dan **perpustakaan biji** (termasuk kesegaran biji).
+- **Mocktail**: mode "Mocktail" di tab Kalkulator untuk membuat minuman bersirup.
+  Pilih bahan dasar (soda, tonic, ginger ale, air putih, air kelapa, teh dingin),
+  sampai 3 sirup (preset atau buatan sendiri) dengan pembagian bagian, tingkat
+  manis, teknik (langsung atau kocok), es, jeruk nipis, dan hiasan. Takaran per
+  porsi dan total dihitung otomatis lengkap dengan langkah pembuatan.
+- **Resep Saya**: simpan resep kopi maupun mocktail dalam satu daftar (ketuk untuk
+  memuat, tahan untuk menghapus).
+- **Perpustakaan biji** (termasuk kesegaran biji).
 - **Dial-in**: saran penyesuaian seduhan, termasuk rasio air:kopi, berdasarkan kesan rasa.
 - **Statistik seduhan** dan grafik rating.
 - **Ekspor dan bagikan**: kartu bagikan (PNG), ekspor CSV, serta ekspor dan impor
-  cadangan JSON (jurnal, resep, dan biji).
+  cadangan JSON (jurnal, resep kopi dan mocktail, serta biji).
 - **Pengaturan**: ukuran teks (Kecil, Normal, Besar), suhu °C/°F, getaran haptic,
   suara pengingat, layar tetap menyala, dan notifikasi selesai.
 

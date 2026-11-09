@@ -2,6 +2,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../models/brew_adapters.dart';
 import '../models/brew_model.dart';
+import '../models/mocktail_model.dart';
 
 /// Kegagalan akses penyimpanan lokal dengan pesan yang aman ditampilkan.
 class StorageException implements Exception {
@@ -20,17 +21,20 @@ class JournalRepository {
     this._recipeBox,
     this._beanBox,
     this._cacheBox,
+    this._mocktailBox,
   );
 
   static const String _journalBoxName = 'brew_journal';
   static const String _recipeBoxName = 'brew_recipes';
   static const String _beanBoxName = 'brew_beans';
   static const String _cacheBoxName = 'brew_cache';
+  static const String _mocktailBoxName = 'mocktail_recipes';
 
   final Box<BrewEntry> _journalBox;
   final Box<BrewRecipe> _recipeBox;
   final Box<BrewBean> _beanBox;
   final Box<dynamic> _cacheBox;
+  final Box<MocktailRecipe> _mocktailBox;
 
   /// Inisialisasi Hive, daftarkan adapter, dan buka box. Jika file box rusak,
   /// box dibuat ulang agar aplikasi tetap bisa dibuka.
@@ -52,7 +56,10 @@ class JournalRepository {
     );
     final Box<BrewBean> beans = await _openSafely<BrewBean>(_beanBoxName);
     final Box<dynamic> cache = await _openSafely<dynamic>(_cacheBoxName);
-    return JournalRepository._(journal, recipes, beans, cache);
+    final Box<MocktailRecipe> mocktails = await _openSafely<MocktailRecipe>(
+      _mocktailBoxName,
+    );
+    return JournalRepository._(journal, recipes, beans, cache, mocktails);
   }
 
   static Future<Box<T>> _openSafely<T>(String name) async {
@@ -111,6 +118,34 @@ class JournalRepository {
       await _recipeBox.delete(id);
     } catch (_) {
       throw const StorageException('Gagal menghapus resep.');
+    }
+  }
+
+  // --- Resep mocktail -------------------------------------------------------
+
+  /// Semua resep mocktail, terbaru di atas.
+  List<MocktailRecipe> getMocktails() {
+    final List<MocktailRecipe> items = _mocktailBox.values.toList()
+      ..sort(
+        (MocktailRecipe a, MocktailRecipe b) =>
+            b.createdAt.compareTo(a.createdAt),
+      );
+    return items;
+  }
+
+  Future<void> saveMocktail(MocktailRecipe recipe) async {
+    try {
+      await _mocktailBox.put(recipe.id, recipe);
+    } catch (_) {
+      throw const StorageException('Gagal menyimpan resep mocktail.');
+    }
+  }
+
+  Future<void> deleteMocktail(String id) async {
+    try {
+      await _mocktailBox.delete(id);
+    } catch (_) {
+      throw const StorageException('Gagal menghapus resep mocktail.');
     }
   }
 
