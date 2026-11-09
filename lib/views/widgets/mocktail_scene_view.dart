@@ -68,10 +68,10 @@ class _MocktailSceneViewState extends State<MocktailSceneView> {
           'base',
           '**',
           'baseFill',
-        ], value: MocktailScene.baseColor(spec.base)),
+        ], value: MocktailScene.baseColor(spec)),
         if (!spec.useIce) hide('ice'),
         if (!spec.useCitrus) hide('citrus'),
-        if (!spec.base.sparkling) hide('bubbles'),
+        if (!spec.baseSparkling) hide('bubbles'),
         if (spec.method == MocktailMethod.shake) hide('spoon'),
         if (spec.method == MocktailMethod.build) hide('shaker'),
         if (!spec.garnishes.contains(MocktailGarnish.limeWheel))

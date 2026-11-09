@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../../models/brew_model.dart';
+import '../../models/mocktail_model.dart';
 
 /// Ikon garis alat seduh (V60, Aeropress, French press, Chemex) yang
 /// digambar `CustomPaint` pada kotak 24 × 24.
@@ -204,4 +205,174 @@ class _BeanPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BeanPainter old) =>
       old.filled != filled || old.color != color;
+}
+
+/// Ikon garis teknik mocktail: gelas dengan sendok bar (langsung) atau
+/// shaker (kocok), pada kotak 24 × 24.
+class MocktailMethodIcon extends StatelessWidget {
+  const MocktailMethodIcon({
+    super.key,
+    required this.method,
+    required this.color,
+    this.size = 24,
+  });
+
+  final MocktailMethod method;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size.square(size),
+    painter: _MocktailMethodPainter(method, color),
+  );
+}
+
+class _MocktailMethodPainter extends CustomPainter {
+  const _MocktailMethodPainter(this.method, this.color);
+
+  final MocktailMethod method;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 24);
+    final Paint line = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.7
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    switch (method) {
+      case MocktailMethod.build:
+        canvas
+          ..drawPath(
+            Path()
+              ..moveTo(6, 7)
+              ..lineTo(18, 7)
+              ..lineTo(16.4, 21)
+              ..lineTo(7.6, 21)
+              ..close(),
+            line,
+          )
+          ..drawLine(const Offset(14.5, 2.5), const Offset(11, 15), line)
+          ..drawLine(const Offset(7.2, 12), const Offset(16.8, 12), line);
+      case MocktailMethod.shake:
+        canvas
+          ..drawPath(
+            Path()
+              ..moveTo(7.5, 9)
+              ..lineTo(16.5, 9)
+              ..lineTo(15.4, 21.5)
+              ..lineTo(8.6, 21.5)
+              ..close(),
+            line,
+          )
+          ..drawRRect(
+            RRect.fromRectAndRadius(
+              const Rect.fromLTWH(8.5, 5, 7, 4),
+              const Radius.circular(1.2),
+            ),
+            line,
+          )
+          ..drawCircle(const Offset(12, 3.3), 1.3, line)
+          ..drawLine(const Offset(9.2, 14), const Offset(14.8, 14), line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_MocktailMethodPainter old) =>
+      old.method != method || old.color != color;
+}
+
+/// Tingkat manis sebagai satu sampai tiga tetes.
+class SweetnessIcon extends StatelessWidget {
+  const SweetnessIcon({
+    super.key,
+    required this.sweetness,
+    required this.color,
+    this.size = 24,
+  });
+
+  final MocktailSweetness sweetness;
+  final Color color;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size.square(size),
+    painter: _SweetnessPainter(sweetness.index + 1, color),
+  );
+}
+
+class _SweetnessPainter extends CustomPainter {
+  const _SweetnessPainter(this.drops, this.color);
+
+  final int drops;
+  final Color color;
+
+  Path _drop(double cx, double cy, double s) => Path()
+    ..moveTo(cx, cy - 5.2 * s)
+    ..cubicTo(
+      cx + 2 * s,
+      cy - 2.2 * s,
+      cx + 3.6 * s,
+      cy - 0.4 * s,
+      cx + 3.6 * s,
+      cy + 1.6 * s,
+    )
+    ..cubicTo(
+      cx + 3.6 * s,
+      cy + 3.8 * s,
+      cx + 2 * s,
+      cy + 5 * s,
+      cx,
+      cy + 5 * s,
+    )
+    ..cubicTo(
+      cx - 2 * s,
+      cy + 5 * s,
+      cx - 3.6 * s,
+      cy + 3.8 * s,
+      cx - 3.6 * s,
+      cy + 1.6 * s,
+    )
+    ..cubicTo(
+      cx - 3.6 * s,
+      cy - 0.4 * s,
+      cx - 2 * s,
+      cy - 2.2 * s,
+      cx,
+      cy - 5.2 * s,
+    )
+    ..close();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 24);
+    final Paint line = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    switch (drops) {
+      case 1:
+        canvas.drawPath(_drop(12, 12.5, 1.55), line);
+      case 2:
+        canvas
+          ..drawPath(_drop(7.6, 13, 1.25), line)
+          ..drawPath(_drop(16.4, 11, 1.25), line);
+      default:
+        canvas
+          ..drawPath(_drop(12, 7, 1.0), line)
+          ..drawPath(_drop(6.6, 16.5, 1.0), line)
+          ..drawPath(_drop(17.4, 16.5, 1.0), line);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SweetnessPainter old) =>
+      old.drops != drops || old.color != color;
 }

@@ -307,6 +307,22 @@ class JournalRepository {
     return value is int ? value : fallback;
   }
 
+  /// Daftar teks tersimpan, atau daftar kosong bila belum ada.
+  List<String> readStringList(String key) {
+    final Object? value = _cacheBox.get(key);
+    return value is List<dynamic>
+        ? value.whereType<String>().toList()
+        : <String>[];
+  }
+
+  Future<void> writeStringList(String key, List<String> value) async {
+    try {
+      await _cacheBox.put(key, value);
+    } catch (_) {
+      return;
+    }
+  }
+
   Future<void> writeInt(String key, {required int value}) async {
     try {
       await _cacheBox.put(key, value);

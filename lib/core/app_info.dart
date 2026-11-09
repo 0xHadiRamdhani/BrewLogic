@@ -30,8 +30,8 @@ class FeatureItem {
 /// Informasi statis aplikasi. Versi paket mengikuti `pubspec.lock`.
 abstract final class AppInfo {
   static const String name = 'BrewLogic';
-  static const String version = '1.1.0';
-  static const String buildNumber = '2';
+  static const String version = '1.2.0';
+  static const String buildNumber = '3';
   static const String releaseYear = '2026';
   static const String platforms = 'iOS & Android';
 
@@ -53,7 +53,8 @@ abstract final class AppInfo {
   static const String description =
       'BrewLogic menemani homebrewer di setiap cangkir: menghitung takaran '
       'dan suhu, memandu seduhan step-by-step dengan timer, lalu menyimpan '
-      'resep, biji, rating, dan catatan rasa dalam satu jurnal.';
+      'resep, biji, rating, dan catatan rasa dalam satu jurnal. Kini juga '
+      'untuk meracik mocktail bersirup.';
 
   static const List<FeatureItem> features = <FeatureItem>[
     FeatureItem(Icons.calculate_rounded, 'Kalkulator seduh'),
@@ -64,6 +65,8 @@ abstract final class AppInfo {
     FeatureItem(Icons.grain_rounded, 'Perpustakaan biji'),
     FeatureItem(Icons.insights_rounded, 'Statistik seduhan'),
     FeatureItem(Icons.ios_share_rounded, 'Ekspor dan bagikan'),
+    FeatureItem(Icons.local_bar_rounded, 'Mode mocktail'),
+    FeatureItem(Icons.animation_rounded, 'Timer beranimasi'),
   ];
 
   static const List<TechItem> techStack = <TechItem>[
@@ -96,6 +99,12 @@ abstract final class AppInfo {
       name: 'hive + hive_flutter',
       detail: '2.2.3 · 1.1.0',
       icon: Icons.storage_rounded,
+    ),
+    TechItem(
+      category: 'Animasi',
+      name: 'lottie',
+      detail: '3.8.2',
+      icon: Icons.animation_rounded,
     ),
     TechItem(
       category: 'Tipografi',

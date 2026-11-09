@@ -3,60 +3,125 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
 import '../../models/mocktail_model.dart';
+import 'animated_value_text.dart';
+import 'brew_result_card.dart' show MetricRow;
 import 'glass_card.dart';
 
-/// Hasil mocktail: takaran per porsi (dan total bila lebih dari satu porsi)
-/// serta langkah pembuatan.
+/// Hasil mocktail dengan tata letak yang sama seperti kartu hasil kopi: angka
+/// utama (ukuran gelas), lencana tingkat manis, lalu satu `MetricRow` per
+/// bahan. Takaran per porsi, plus total bila lebih dari satu porsi, dan
+/// langkah pembuatan di bawahnya.
 class MocktailResultCard extends StatelessWidget {
   const MocktailResultCard({super.key, required this.blend});
 
   final MocktailBlend blend;
 
+  static IconData _iconOf(MocktailIngredient i, MocktailSpec spec) =>
+      switch (i.kind) {
+        MocktailIngredientKind.syrup => Icons.water_drop_rounded,
+        MocktailIngredientKind.citrus => Icons.eco_rounded,
+        MocktailIngredientKind.base =>
+          spec.baseSparkling
+              ? Icons.bubble_chart_rounded
+              : Icons.opacity_rounded,
+        MocktailIngredientKind.ice => Icons.ac_unit_rounded,
+      };
+
+  String _captionOf(MocktailIngredient i, int index) {
+    final MocktailSpec spec = blend.spec;
+    final String base = switch (i.kind) {
+      MocktailIngredientKind.syrup =>
+        spec.customMl
+            ? 'Takaran sendiri'
+            : spec.syrups.length > 1
+            ? '${spec.syrups[index].parts} bagian'
+            : 'Manis ${spec.sweetness.label.toLowerCase()}',
+      MocktailIngredientKind.citrus => 'Penyeimbang manis',
+      MocktailIngredientKind.base =>
+        spec.baseSparkling ? 'Berkarbonasi' : 'Tuang terakhir',
+      MocktailIngredientKind.ice => 'Isi sekitar 40% gelas',
+    };
+    if (blend.servings > 1) {
+      return '$base · Total ${formatGrams(i.perServing * blend.servings)} '
+          '${i.unit}';
+    }
+    return base;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool many = blend.servings > 1;
+    final MocktailSpec spec = blend.spec;
 
     return GlassCard(
-      accent: AppColors.sage,
+      accent: AppColors.caramel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
-              Text('${blend.spec.glassMl}', style: AppTextStyles.heroNumber),
-              const SizedBox(width: 6),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+              const Expanded(
                 child: Text(
-                  'ml / gelas',
-                  style: AppTextStyles.bodySecondary.copyWith(
-                    color: AppColors.sage,
-                  ),
+                  'UKURAN GELAS',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sectionLabel,
                 ),
               ),
+              const SizedBox(width: 8),
+              _Pill(
+                label: blend.servings > 1
+                    ? '${spec.customMl ? 'Sendiri' : spec.sweetness.label} '
+                          '· ${blend.servings} porsi'
+                    : spec.customMl
+                    ? 'Takaran sendiri'
+                    : 'Manis ${spec.sweetness.label}',
+              ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Semantics(
+            label: 'Ukuran gelas ${spec.glassMl} mililiter',
+            excludeSemantics: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: <Widget>[
+                Flexible(
+                  child: AnimatedValueText(
+                    text: '${spec.glassMl}',
+                    style: AppTextStyles.heroNumber,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Text(
+                  'ml',
+                  style: TextStyle(
+                    color: AppColors.caramel,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 2),
           Text(
-            '${blend.summary} · ${blend.spec.method.description}',
+            '${spec.baseLabel} · ${spec.method.description}',
             style: AppTextStyles.bodySecondary,
           ),
-          const SizedBox(height: 18),
-          Row(
-            children: <Widget>[
-              const Expanded(
-                child: Text('BAHAN', style: AppTextStyles.sectionLabel),
-              ),
-              Text(
-                many ? 'PER PORSI · TOTAL' : 'PER PORSI',
-                style: AppTextStyles.sectionLabel,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final MocktailIngredient item in blend.ingredients)
-            _IngredientRow(item: item, servings: blend.servings),
+          const SizedBox(height: 16),
+          const _Divider(),
+          for (int i = 0; i < blend.ingredients.length; i++) ...<Widget>[
+            MetricRow(
+              icon: _iconOf(blend.ingredients[i], spec),
+              label: blend.ingredients[i].name,
+              value:
+                  '${formatGrams(blend.ingredients[i].perServing)} '
+                  '${blend.ingredients[i].unit}',
+              caption: _captionOf(blend.ingredients[i], i),
+            ),
+            const _Divider(),
+          ],
           const SizedBox(height: 18),
           const Text('LANGKAH', style: AppTextStyles.sectionLabel),
           const SizedBox(height: 12),
@@ -68,54 +133,40 @@ class MocktailResultCard extends StatelessWidget {
   }
 }
 
-class _IngredientRow extends StatelessWidget {
-  const _IngredientRow({required this.item, required this.servings});
+class _Pill extends StatelessWidget {
+  const _Pill({required this.label});
 
-  final MocktailIngredient item;
-  final int servings;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final String per = '${formatGrams(item.perServing)} ${item.unit}';
-    final String total =
-        '${formatGrams(item.perServing * servings)} ${item.unit}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(
-              color: item.color == null
-                  ? AppColors.textSecondary
-                  : Color(item.color!),
-              shape: BoxShape.circle,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              item.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.body,
-            ),
-          ),
-          Text(per, style: AppTextStyles.metricValue),
-          if (servings > 1) ...<Widget>[
-            const SizedBox(width: 8),
-            Text(
-              '· $total',
-              style: AppTextStyles.bodySecondary.copyWith(
-                color: AppColors.sage,
-              ),
-            ),
-          ],
-        ],
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 190),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.caramel.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.caramel.withValues(alpha: 0.5)),
+      ),
+      child: AnimatedValueText(
+        text: label,
+        alignment: Alignment.center,
+        style: const TextStyle(
+          color: AppColors.caramel,
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) =>
+      const SizedBox(height: 1, child: ColoredBox(color: Color(0x1FF3E6D6)));
 }
 
 class _StepRow extends StatelessWidget {
@@ -137,13 +188,15 @@ class _StepRow extends StatelessWidget {
             alignment: Alignment.center,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.sage.withValues(alpha: 0.18),
-              border: Border.all(color: AppColors.sage.withValues(alpha: 0.6)),
+              color: AppColors.caramel.withValues(alpha: 0.16),
+              border: Border.all(
+                color: AppColors.caramel.withValues(alpha: 0.6),
+              ),
             ),
             child: Text(
               '$number',
               style: const TextStyle(
-                color: AppColors.sage,
+                color: AppColors.caramel,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),

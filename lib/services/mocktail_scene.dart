@@ -58,18 +58,19 @@ abstract final class MocktailScene {
     return seg.from + span * fraction;
   }
 
-  /// Warna campuran sirup, dirata-ratakan menurut bagian tiap sirup.
+  /// Warna campuran sirup, dirata-ratakan menurut bagian (atau ml sendiri).
   static Color syrupColor(MocktailSpec spec) {
     double r = 0;
     double g = 0;
     double b = 0;
-    int parts = 0;
+    double parts = 0;
     for (final MocktailSyrup s in spec.syrups) {
       final Color c = Color(SyrupPresets.byName(s.name)?.color ?? 0xFFD9A566);
-      r += c.r * s.parts;
-      g += c.g * s.parts;
-      b += c.b * s.parts;
-      parts += s.parts;
+      final double weight = spec.customMl ? s.ml! : s.parts.toDouble();
+      r += c.r * weight;
+      g += c.g * weight;
+      b += c.b * weight;
+      parts += weight;
     }
     if (parts == 0) {
       return const Color(0xFFD9A566);
@@ -82,12 +83,20 @@ abstract final class MocktailScene {
     );
   }
 
-  static Color baseColor(MocktailBase base) => switch (base) {
-    MocktailBase.soda => const Color(0xFFCDE7F0),
-    MocktailBase.tonic => const Color(0xFFE6F3F7),
-    MocktailBase.gingerAle => const Color(0xFFF0D58A),
-    MocktailBase.water => const Color(0xFFD6EDF5),
-    MocktailBase.coconut => const Color(0xFFF2EEE6),
-    MocktailBase.iceTea => const Color(0xFFC98A3E),
-  };
+  /// Warna cairan bahan dasar: warna pilihan pengguna untuk bahan buatan
+  /// sendiri, atau warna bawaan preset.
+  static Color baseColor(MocktailSpec spec) {
+    final MocktailCustomBase? custom = spec.customBase;
+    if (custom != null) {
+      return Color(custom.color);
+    }
+    return switch (spec.base) {
+      MocktailBase.soda => const Color(0xFFCDE7F0),
+      MocktailBase.tonic => const Color(0xFFE6F3F7),
+      MocktailBase.gingerAle => const Color(0xFFF0D58A),
+      MocktailBase.water => const Color(0xFFD6EDF5),
+      MocktailBase.coconut => const Color(0xFFF2EEE6),
+      MocktailBase.iceTea => const Color(0xFFC98A3E),
+    };
+  }
 }

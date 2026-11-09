@@ -1,98 +1,135 @@
-import 'package:adaptive_platform_ui/adaptive_platform_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../core/layout.dart';
-import '../core/navigation.dart';
-import '../core/theme/app_theme.dart';
-import '../core/utils/formatters.dart';
-import '../models/mocktail_model.dart';
-import '../services/timer_alerts.dart';
-import '../viewmodels/brew_viewmodel.dart' show BrewTimerStatus;
-import '../viewmodels/mocktail_brew_viewmodel.dart';
-import '../viewmodels/settings_viewmodel.dart';
-import 'widgets/ambient_background.dart';
-import 'widgets/app_button.dart';
-import 'widgets/app_text_scope.dart';
-import 'widgets/glass_app_bar.dart';
-import 'widgets/glass_card.dart';
-import 'widgets/mocktail_scene_view.dart';
-import 'widgets/motion.dart';
-import 'widgets/timer_ring_painter.dart';
+import '../../core/layout.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/utils/formatters.dart';
+import '../../models/mocktail_model.dart';
+import '../../services/timer_alerts.dart';
+import '../../viewmodels/brew_viewmodel.dart' show BrewTimerStatus;
+import '../../viewmodels/mocktail_brew_viewmodel.dart';
+import '../../viewmodels/settings_viewmodel.dart';
+import 'app_button.dart';
+import 'glass_card.dart';
+import 'mocktail_scene_view.dart';
+import 'motion.dart';
+import 'timer_ring_painter.dart';
 
-/// Timer "Mulai Buat Mocktail": gelas beranimasi di dalam cincin timer,
-/// langkah berjalan otomatis menurut durasi, daftar langkah yang bisa
-/// dilompati, dan pengulangan per gelas.
-class MocktailBrewScreen extends StatelessWidget {
-  const MocktailBrewScreen({
+/// Isi tab Timer saat mode Mocktail aktif: gelas beranimasi di dalam cincin
+/// timer, langkah berjalan otomatis menurut durasi, daftar bahan, dan daftar
+/// langkah yang bisa dilompati. Sama seperti timer kopi, timer-nya berjalan
+/// terus walau pindah tab; mengubah resep mengatur ulang timer.
+class MocktailTimerView extends StatefulWidget {
+  const MocktailTimerView({
     super.key,
     required this.blend,
     this.alerts,
     this.prefs,
   });
 
-  final MocktailBlend blend;
+  /// Hasil hitungan mocktail saat ini; `null` bila resep belum valid.
+  final MocktailBlend? blend;
 
   /// Hanya untuk pengujian; bawaannya suara dan layar menyala dari platform.
   final TimerAlerts? alerts;
   final TimerPrefs? prefs;
 
-  static Future<void> open(BuildContext context, MocktailBlend blend) =>
-      pushPlatformPage<void>(context, MocktailBrewScreen(blend: blend));
-
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider<MocktailBrewViewModel>(
-      create: (BuildContext context) => MocktailBrewViewModel(
-        blend: blend,
-        alerts: alerts ?? PlatformTimerAlerts(),
-        prefs: prefs ?? context.read<SettingsViewModel>(),
-      ),
-      child: const _BrewView(),
-    );
-  }
+  State<MocktailTimerView> createState() => _MocktailTimerViewState();
 }
 
-class _BrewView extends StatelessWidget {
-  const _BrewView();
+class _MocktailTimerViewState extends State<MocktailTimerView> {
+  MocktailBrewViewModel? _vm;
+  TimerAlerts? _alerts;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(MocktailTimerView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _sync();
+  }
+
+  /// Membuat ulang timer hanya bila resepnya benar-benar berubah.
+  void _sync() {
+    final MocktailBlend? blend = widget.blend;
+    final MocktailBrewViewModel? current = _vm;
+    if (blend == null) {
+      current?.dispose();
+      _vm = null;
+      return;
+    }
+    if (current != null && current.blend.spec == blend.spec) {
+      return;
+    }
+    current?.dispose();
+    _alerts ??= widget.alerts ?? PlatformTimerAlerts();
+    _vm = MocktailBrewViewModel(
+      blend: blend,
+      alerts: _alerts!,
+      prefs: widget.prefs ?? context.read<SettingsViewModel>(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _vm?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final MocktailBrewViewModel vm = context.watch<MocktailBrewViewModel>();
-
-    return AdaptiveScaffold(
-      backgroundColor: AppColors.background,
-      body: AppTextScope(
-        child: Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            const Positioned.fill(child: AmbientBackground()),
-            HeaderClip(
-              child: ListView(
-                padding: AppLayout.screenPadding(context, hasBottomBar: false),
+    final MocktailBrewViewModel? vm = _vm;
+    if (vm == null) {
+      return ListView(
+        padding: AppLayout.screenPadding(context),
+        children: const <Widget>[
+          StaggerIn(
+            child: GlassCard(
+              child: Row(
                 children: <Widget>[
-                  StaggerIn(child: _SummaryBar(vm: vm)),
-                  const SizedBox(height: 16),
-                  StaggerIn(index: 1, child: _TimerPanel(vm: vm)),
-                  const SizedBox(height: 16),
-                  StaggerIn(index: 2, child: _PrepCard(vm: vm)),
-                  const SizedBox(height: 16),
-                  StaggerIn(index: 3, child: _StepList(vm: vm)),
+                  Icon(
+                    Icons.local_bar_rounded,
+                    color: AppColors.sage,
+                    size: 32,
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: Text(
+                      'Pilih minimal satu sirup yang valid di tab Kalkulator '
+                      '(mode Mocktail) agar timer dapat disusun.',
+                      style: AppTextStyles.bodySecondary,
+                    ),
+                  ),
                 ],
               ),
             ),
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: GlassAppBar(
-                title: 'Mulai Buat',
-                subtitle: 'Ikuti timer, gelasmu terisi sendiri',
-                leading: GlassBackButton(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
+      );
+    }
+
+    return ChangeNotifierProvider<MocktailBrewViewModel>.value(
+      value: vm,
+      child: Consumer<MocktailBrewViewModel>(
+        builder: (BuildContext context, MocktailBrewViewModel vm, _) {
+          return ListView(
+            padding: AppLayout.screenPadding(context),
+            children: <Widget>[
+              StaggerIn(child: _SummaryBar(vm: vm)),
+              const SizedBox(height: 16),
+              StaggerIn(index: 1, child: _TimerPanel(vm: vm)),
+              const SizedBox(height: 16),
+              StaggerIn(index: 2, child: _PrepCard(vm: vm)),
+              const SizedBox(height: 16),
+              StaggerIn(index: 3, child: _StepList(vm: vm)),
+            ],
+          );
+        },
       ),
     );
   }
@@ -326,7 +363,7 @@ class _Controls extends StatelessWidget {
           Expanded(
             flex: 2,
             child: AppButton(
-              label: 'Ulangi',
+              label: vm.hasNextGlass ? 'Ulangi' : 'Reset',
               color: AppColors.secondaryButton,
               textColor: AppColors.textPrimary,
               onPressed: vm.reset,
@@ -343,10 +380,10 @@ class _Controls extends StatelessWidget {
                     onPressed: vm.nextGlass,
                   )
                 : AppButton(
-                    label: 'Selesai',
-                    color: AppColors.sage,
+                    label: 'Ulangi',
+                    color: AppColors.caramel,
                     textColor: AppColors.onAccent,
-                    onPressed: () => Navigator.of(context).maybePop(),
+                    onPressed: vm.start,
                   ),
           ),
         ],

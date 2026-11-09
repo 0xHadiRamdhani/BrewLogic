@@ -20,6 +20,49 @@ enum MocktailBase {
   final bool sparkling;
 }
 
+/// Bahan dasar buatan sendiri (mis. jus apel, kombucha). [sparkling] menentukan
+/// cara menuang dan gelembung di animasi; [color] (ARGB) mewarnai cairan di
+/// animasi gelas.
+@immutable
+class MocktailCustomBase {
+  const MocktailCustomBase(
+    this.name, {
+    this.sparkling = false,
+    this.color = defaultColor,
+  });
+
+  static const int maxNameLength = 20;
+
+  /// Jumlah maksimal bahan buatan yang disimpan.
+  static const int maxSaved = 8;
+
+  static const int defaultColor = 0xFFEADFC8;
+
+  /// Pilihan warna cairan: bening, kuning, merah muda, hijau, susu, cokelat.
+  static const List<int> palette = <int>[
+    0xFFD6EDF5,
+    0xFFF0D58A,
+    0xFFE9A8A0,
+    0xFFB9DCA5,
+    0xFFF2EEE6,
+    0xFFC98A3E,
+  ];
+
+  final String name;
+  final bool sparkling;
+  final int color;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MocktailCustomBase &&
+      other.name == name &&
+      other.sparkling == sparkling &&
+      other.color == color;
+
+  @override
+  int get hashCode => Object.hash(name, sparkling, color);
+}
+
 /// Tingkat manis: porsi sirup terhadap total cairan (di luar es).
 enum MocktailSweetness {
   light('Ringan', 0.12),
@@ -93,23 +136,42 @@ abstract final class SyrupPresets {
   }
 }
 
-/// Satu sirup di resep: [parts] adalah bagian relatif dari total sirup.
+/// Satu sirup di resep. Secara bawaan takarannya otomatis: [parts] adalah
+/// bagian relatif dari total sirup menurut tingkat manis. Bila [ml] diisi,
+/// itulah takaran tepat (ml per gelas) dan [parts] tidak dipakai.
 @immutable
 class MocktailSyrup {
-  const MocktailSyrup(this.name, {this.parts = 1});
+  const MocktailSyrup(this.name, {this.parts = 1, this.ml});
 
   final String name;
   final int parts;
+  final double? ml;
 
-  MocktailSyrup copyWith({int? parts}) =>
-      MocktailSyrup(name, parts: parts ?? this.parts);
+  MocktailSyrup copyWith({int? parts, double? ml, bool clearMl = false}) =>
+      MocktailSyrup(
+        name,
+        parts: parts ?? this.parts,
+        ml: clearMl ? null : (ml ?? this.ml),
+      );
+
+  /// Takaran ml berlaku untuk semua sirup atau tidak sama sekali; campuran
+  /// (mis. data lama atau rusak) dikembalikan ke otomatis.
+  static List<MocktailSyrup> normalized(List<MocktailSyrup> syrups) =>
+      syrups.every((MocktailSyrup s) => s.ml != null)
+      ? syrups
+      : <MocktailSyrup>[
+          for (final MocktailSyrup s in syrups) s.copyWith(clearMl: true),
+        ];
 
   @override
   bool operator ==(Object other) =>
-      other is MocktailSyrup && other.name == name && other.parts == parts;
+      other is MocktailSyrup &&
+      other.name == name &&
+      other.parts == parts &&
+      other.ml == ml;
 
   @override
-  int get hashCode => Object.hash(name, parts);
+  int get hashCode => Object.hash(name, parts, ml);
 }
 
 /// Masukan pengguna untuk satu mocktail (per porsi, dikali [servings]).
@@ -125,6 +187,8 @@ class MocktailSpec {
     this.useCitrus = true,
     this.syrups = const <MocktailSyrup>[],
     this.garnishes = const <MocktailGarnish>{},
+    this.customGarnishes = const <String>{},
+    this.customBase,
   });
 
   static const int minServings = 1;
@@ -135,11 +199,25 @@ class MocktailSpec {
   static const int minParts = 1;
   static const int maxParts = 4;
 
+  /// Batas takaran sirup yang diisi sendiri (ml per gelas).
+  static const double minSyrupMl = 0.5;
+  static const double maxSyrupMl = 150;
+
+  /// Sisa minimal bahan dasar (ml) agar minuman tidak hanya sirup.
+  static const double minBaseMl = 20;
+
+  /// Batas hiasan buatan sendiri: panjang nama dan jumlah yang tersimpan.
+  static const int maxGarnishNameLength = 20;
+  static const int maxSavedGarnishes = 10;
+
   final int servings;
 
   /// Volume gelas per porsi (ml), termasuk es.
   final int glassMl;
   final MocktailBase base;
+
+  /// Bila diisi, bahan dasar buatan sendiri ini dipakai menggantikan [base].
+  final MocktailCustomBase? customBase;
   final MocktailSweetness sweetness;
   final MocktailMethod method;
   final bool useIce;
@@ -148,6 +226,62 @@ class MocktailSpec {
   final bool useCitrus;
   final List<MocktailSyrup> syrups;
   final Set<MocktailGarnish> garnishes;
+
+  /// Hiasan buatan sendiri yang dipakai (nama), urutan pemilihan.
+  final Set<String> customGarnishes;
+
+  /// Semua hiasan yang dipakai: bawaan dulu, lalu buatan sendiri.
+  List<String> get garnishNames => <String>[
+    for (final MocktailGarnish g in MocktailGarnish.values)
+      if (garnishes.contains(g)) g.label,
+    ...customGarnishes,
+  ];
+
+  /// Nama bahan dasar yang dipilih (preset atau buatan sendiri).
+  String get baseLabel => customBase?.name ?? base.label;
+
+  /// Nama bahan dasar di daftar takaran.
+  String get baseIngredient => customBase?.name ?? base.ingredient;
+
+  /// Bahan dasar berkarbonasi: dituang perlahan dan bergelembung.
+  bool get baseSparkling => customBase?.sparkling ?? base.sparkling;
+
+  /// `true` bila [value] (preset) adalah bahan dasar yang dipilih.
+  bool isBase(MocktailBase value) => customBase == null && base == value;
+
+  /// `true` bila semua sirup memakai takaran ml sendiri.
+  bool get customMl =>
+      syrups.isNotEmpty && syrups.every((MocktailSyrup s) => s.ml != null);
+
+  @override
+  bool operator ==(Object other) =>
+      other is MocktailSpec &&
+      other.servings == servings &&
+      other.glassMl == glassMl &&
+      other.base == base &&
+      other.customBase == customBase &&
+      other.sweetness == sweetness &&
+      other.method == method &&
+      other.useIce == useIce &&
+      other.useCitrus == useCitrus &&
+      listEquals(other.syrups, syrups) &&
+      setEquals(other.garnishes, garnishes) &&
+      setEquals(other.customGarnishes, customGarnishes);
+
+  @override
+  int get hashCode => Object.hash(
+    servings,
+    glassMl,
+    base,
+    customBase,
+    sweetness,
+    method,
+    useIce,
+    useCitrus,
+    Object.hashAll(syrups),
+    Object.hashAllUnordered(garnishes),
+    Object.hashAllUnordered(customGarnishes),
+  );
 
   MocktailSpec copyWith({
     int? servings,
@@ -159,6 +293,9 @@ class MocktailSpec {
     bool? useCitrus,
     List<MocktailSyrup>? syrups,
     Set<MocktailGarnish>? garnishes,
+    Set<String>? customGarnishes,
+    MocktailCustomBase? customBase,
+    bool clearCustomBase = false,
   }) => MocktailSpec(
     servings: servings ?? this.servings,
     glassMl: glassMl ?? this.glassMl,
@@ -169,19 +306,26 @@ class MocktailSpec {
     useCitrus: useCitrus ?? this.useCitrus,
     syrups: syrups ?? this.syrups,
     garnishes: garnishes ?? this.garnishes,
+    customGarnishes: customGarnishes ?? this.customGarnishes,
+    customBase: clearCustomBase ? null : (customBase ?? this.customBase),
   );
 }
+
+/// Jenis bahan di hasil hitungan.
+enum MocktailIngredientKind { syrup, citrus, base, ice }
 
 /// Satu bahan di hasil hitungan, dengan takaran per porsi.
 @immutable
 class MocktailIngredient {
   const MocktailIngredient({
+    required this.kind,
     required this.name,
     required this.perServing,
     required this.unit,
     this.color,
   });
 
+  final MocktailIngredientKind kind;
   final String name;
   final double perServing;
 
@@ -292,7 +436,7 @@ class MocktailBlend {
   /// Ringkasan satu baris, mis. "Soda · 2 sirup · 300 ml".
   String get summary {
     final int n = spec.syrups.length;
-    return '${spec.base.label} · $n sirup · ${spec.glassMl} ml';
+    return '${spec.baseLabel} · $n sirup · ${spec.glassMl} ml';
   }
 }
 

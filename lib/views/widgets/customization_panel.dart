@@ -189,16 +189,21 @@ class _RatioRow extends StatelessWidget {
         Semantics(
           label: 'Rasio air banding kopi',
           value: formatRatio(ratio),
-          child: Slider.adaptive(
-            value: ratio.clamp(
-              BrewCustomization.minRatio,
-              BrewCustomization.maxRatio,
+          // Slider selalu menuntut leluhur Material (assert di mode debug),
+          // juga di iOS yang memakai CupertinoSlider.
+          child: Material(
+            type: MaterialType.transparency,
+            child: Slider.adaptive(
+              value: ratio.clamp(
+                BrewCustomization.minRatio,
+                BrewCustomization.maxRatio,
+              ),
+              min: BrewCustomization.minRatio,
+              max: BrewCustomization.maxRatio,
+              divisions: 20,
+              activeColor: AppColors.caramel,
+              onChanged: onChanged,
             ),
-            min: BrewCustomization.minRatio,
-            max: BrewCustomization.maxRatio,
-            divisions: 20,
-            activeColor: AppColors.caramel,
-            onChanged: onChanged,
           ),
         ),
       ],

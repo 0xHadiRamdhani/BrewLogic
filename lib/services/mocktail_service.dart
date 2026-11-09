@@ -33,8 +33,33 @@ class MocktailService {
       return 'Jumlah porsi ${MocktailSpec.minServings}–'
           '${MocktailSpec.maxServings}.';
     }
+    if (spec.customMl) {
+      for (final MocktailSyrup s in spec.syrups) {
+        final double ml = s.ml!;
+        if (ml < MocktailSpec.minSyrupMl || ml > MocktailSpec.maxSyrupMl) {
+          return 'Takaran sirup ${formatGrams(MocktailSpec.minSyrupMl)}–'
+              '${formatGrams(MocktailSpec.maxSyrupMl)} ml.';
+        }
+      }
+      final double syrups = spec.syrups.fold<double>(
+        0,
+        (double sum, MocktailSyrup s) => sum + _half(s.ml!),
+      );
+      final double base = _liquid(spec) - syrups - _half(_citrus(spec));
+      if (base < MocktailSpec.minBaseMl) {
+        return 'Sirup dan jeruk nipis terlalu banyak untuk gelas '
+            '${spec.glassMl} ml. Kurangi takaran atau pakai gelas lebih besar.';
+      }
+    }
     return null;
   }
+
+  double _liquid(MocktailSpec spec) => spec.useIce
+      ? spec.glassMl * (1 - iceVolumeShare)
+      : spec.glassMl * noIceFillShare;
+
+  double _citrus(MocktailSpec spec) =>
+      spec.useCitrus ? _liquid(spec) * citrusShare : 0;
 
   /// Menghitung takaran, atau `null` bila [validate] gagal.
   MocktailBlend? calculate(MocktailSpec spec) {
@@ -42,21 +67,19 @@ class MocktailService {
       return null;
     }
 
-    final double liquid = spec.useIce
-        ? spec.glassMl * (1 - iceVolumeShare)
-        : spec.glassMl * noIceFillShare;
+    final double liquid = _liquid(spec);
     final double syrupTotal = liquid * spec.sweetness.syrupShare;
-    final double citrus = spec.useCitrus ? liquid * citrusShare : 0;
+    final double citrus = _citrus(spec);
 
     // Pembulatan ke 0,5 ml; sisa cairan jadi bahan dasar agar jumlah tetap
-    // pas dengan volume gelas.
+    // pas dengan volume gelas. Takaran ml sendiri dipakai apa adanya.
     final int partSum = spec.syrups.fold<int>(
       0,
       (int sum, MocktailSyrup s) => sum + s.parts,
     );
     final List<double> syrupAmounts = <double>[
       for (final MocktailSyrup s in spec.syrups)
-        _half(syrupTotal * s.parts / partSum),
+        spec.customMl ? _half(s.ml!) : _half(syrupTotal * s.parts / partSum),
     ];
     final double syrupRounded = syrupAmounts.fold<double>(
       0,
@@ -68,6 +91,7 @@ class MocktailService {
     final List<MocktailIngredient> ingredients = <MocktailIngredient>[
       for (int i = 0; i < spec.syrups.length; i++)
         MocktailIngredient(
+          kind: MocktailIngredientKind.syrup,
           name: _syrupLabel(spec.syrups[i].name),
           perServing: syrupAmounts[i],
           unit: 'ml',
@@ -75,17 +99,20 @@ class MocktailService {
         ),
       if (citrusRounded > 0)
         MocktailIngredient(
+          kind: MocktailIngredientKind.citrus,
           name: 'Perasan jeruk nipis',
           perServing: citrusRounded,
           unit: 'ml',
         ),
       MocktailIngredient(
-        name: spec.base.ingredient,
+        kind: MocktailIngredientKind.base,
+        name: spec.baseIngredient,
         perServing: baseMl,
         unit: 'ml',
       ),
       if (spec.useIce)
         MocktailIngredient(
+          kind: MocktailIngredientKind.ice,
           name: 'Es batu',
           perServing: _iceGrams(spec.glassMl),
           unit: 'g',
@@ -129,7 +156,7 @@ class MocktailService {
         '${spec.syrups[i].name} ${_ml(syrupAmounts[i])}',
     ].join(', ');
     final String ice = 'es batu (± ${formatGrams(_iceGrams(spec.glassMl))} g)';
-    final String baseName = spec.base.ingredient.toLowerCase();
+    final String baseName = spec.baseIngredient.toLowerCase();
     final String citrusText = citrus > 0
         ? 'perasan jeruk nipis ${_ml(citrus)}'
         : '';
@@ -206,17 +233,17 @@ class MocktailService {
     steps.add(
       MocktailStep(
         kind: MocktailStepKind.base,
-        title: 'Tuang ${spec.base.label.toLowerCase()}',
-        text: spec.base.sparkling
+        title: 'Tuang ${spec.baseLabel.toLowerCase()}',
+        text: spec.baseSparkling
             ? 'Tuang $baseName ${_ml(baseMl)} perlahan lewat sendok bar agar '
                   'gelembung tetap awet dan warnanya bergradasi.'
             : 'Tuang $baseName ${_ml(baseMl)} hingga penuh.',
-        durationSeconds: spec.base.sparkling ? 15 : 10,
+        durationSeconds: spec.baseSparkling ? 15 : 10,
       ),
     );
-    if (spec.garnishes.isNotEmpty) {
-      final String names = spec.garnishes
-          .map((MocktailGarnish g) => g.label.toLowerCase())
+    if (spec.garnishNames.isNotEmpty) {
+      final String names = spec.garnishNames
+          .map((String g) => g.toLowerCase())
           .join(', ');
       steps.add(
         MocktailStep(

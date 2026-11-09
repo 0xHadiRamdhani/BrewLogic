@@ -276,6 +276,13 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
         (f[10] as List<dynamic>?)?.whereType<String>().toList() ?? <String>[];
     final List<int> parts =
         (f[11] as List<dynamic>?)?.whereType<int>().toList() ?? <int>[];
+    // Takaran ml sendiri (-1 = otomatis); tidak ada di data lama.
+    final List<double> mls =
+        (f[13] as List<dynamic>?)
+            ?.whereType<num>()
+            .map((num n) => n.toDouble())
+            .toList() ??
+        <double>[];
     final int mask = (f[12] as int?) ?? 0;
     return MocktailRecipe(
       id: f[0] as String,
@@ -291,6 +298,13 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
           MocktailSpec.maxGlassMl,
         ),
         base: _enumAt(MocktailBase.values, f[5], MocktailBase.soda),
+        customBase: (f[14] as String?)?.trim().isNotEmpty ?? false
+            ? MocktailCustomBase(
+                (f[14] as String).trim(),
+                sparkling: (f[15] as bool?) ?? false,
+                color: (f[16] as int?) ?? MocktailCustomBase.defaultColor,
+              )
+            : null,
         sweetness: _enumAt(
           MocktailSweetness.values,
           f[6],
@@ -299,7 +313,7 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
         method: _enumAt(MocktailMethod.values, f[7], MocktailMethod.build),
         useIce: (f[8] as bool?) ?? true,
         useCitrus: (f[9] as bool?) ?? true,
-        syrups: <MocktailSyrup>[
+        syrups: MocktailSyrup.normalized(<MocktailSyrup>[
           for (int i = 0; i < names.length; i++)
             MocktailSyrup(
               names[i],
@@ -307,11 +321,23 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
                 MocktailSpec.minParts,
                 MocktailSpec.maxParts,
               ),
+              ml: i < mls.length && mls[i] > 0
+                  ? mls[i].clamp(
+                      MocktailSpec.minSyrupMl,
+                      MocktailSpec.maxSyrupMl,
+                    )
+                  : null,
             ),
-        ],
+        ]),
         garnishes: <MocktailGarnish>{
           for (final MocktailGarnish g in MocktailGarnish.values)
             if (mask & (1 << g.index) != 0) g,
+        },
+        customGarnishes: <String>{
+          ...(f[17] as List<dynamic>? ?? const <dynamic>[])
+              .whereType<String>()
+              .map((String s) => s.trim())
+              .where((String s) => s.isNotEmpty),
         },
       ),
     );
@@ -325,7 +351,7 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
       mask |= 1 << g.index;
     }
     writer
-      ..writeByte(13)
+      ..writeByte(18)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -351,6 +377,16 @@ class MocktailRecipeAdapter extends TypeAdapter<MocktailRecipe> {
       ..writeByte(11)
       ..write(s.syrups.map((MocktailSyrup x) => x.parts).toList())
       ..writeByte(12)
-      ..write(mask);
+      ..write(mask)
+      ..writeByte(13)
+      ..write(s.syrups.map((MocktailSyrup x) => x.ml ?? -1.0).toList())
+      ..writeByte(14)
+      ..write(s.customBase?.name)
+      ..writeByte(15)
+      ..write(s.customBase?.sparkling ?? false)
+      ..writeByte(16)
+      ..write(s.customBase?.color ?? MocktailCustomBase.defaultColor)
+      ..writeByte(17)
+      ..write(s.customGarnishes.toList());
   }
 }

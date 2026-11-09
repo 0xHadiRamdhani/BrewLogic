@@ -9,7 +9,7 @@ import 'package:brewlogic/viewmodels/brew_viewmodel.dart' show BrewTimerStatus;
 import 'package:brewlogic/viewmodels/mocktail_brew_viewmodel.dart';
 import 'package:brewlogic/viewmodels/mocktail_viewmodel.dart';
 import 'package:brewlogic/viewmodels/settings_viewmodel.dart';
-import 'package:brewlogic/views/mocktail_brew_screen.dart';
+import 'package:brewlogic/views/widgets/mocktail_timer_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -392,22 +392,24 @@ void main() {
     });
   });
 
-  testWidgets('layar timer: mulai, lompat langkah, jeda, dan reset', (
+  Widget host(MocktailBlend? blend) => MaterialApp(
+    home: Scaffold(
+      body: MocktailTimerView(
+        blend: blend,
+        alerts: _Alerts(),
+        prefs: const _Prefs(),
+      ),
+    ),
+  );
+
+  testWidgets('tab Timer mocktail: mulai, lompat langkah, jeda, dan reset', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1170, 4000);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MocktailBrewScreen(
-          blend: _blend(),
-          alerts: _Alerts(),
-          prefs: const _Prefs(),
-        ),
-      ),
-    );
+    await tester.pumpWidget(host(_blend()));
     await tester.pump(const Duration(milliseconds: 600));
 
     expect(find.text('SIAP'), findsOneWidget);
@@ -416,6 +418,7 @@ void main() {
     expect(find.text('Total 00:00 / 00:50'), findsOneWidget);
     expect(find.text('Isi es'), findsOneWidget); // daftar langkah
     expect(find.text('Tuang soda'), findsOneWidget);
+    expect(find.text('Siapkan bahan'), findsOneWidget);
 
     await tester.tap(find.text('Mulai'));
     await tester.pump(const Duration(milliseconds: 50));
@@ -437,7 +440,71 @@ void main() {
     expect(find.text('SIAP'), findsOneWidget);
     expect(find.text('Mulai'), findsOneWidget);
 
-    // Lepas layar agar timer berulang dibatalkan.
+    // Lepas tampilan agar timer berulang dibatalkan.
     await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('timer tetap berjalan bila resep sama, diatur ulang bila beda', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1170, 4000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(host(_blend()));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.tap(find.text('Mulai'));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Jeda'), findsOneWidget);
+
+    // Hasil hitungan baru dengan resep yang sama (mis. rebuild induk).
+    await tester.pumpWidget(host(_blend()));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Jeda'), findsOneWidget);
+
+    // Resep berubah: timer baru, kembali ke siap.
+    await tester.pumpWidget(host(_blend(servings: 2)));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('SIAP'), findsOneWidget);
+    expect(find.text('Mulai'), findsOneWidget);
+    expect(find.text('Gelas 1/2'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('resep belum valid menampilkan petunjuk, bukan timer', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(host(null));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.textContaining('minimal satu sirup'), findsOneWidget);
+    expect(find.text('Mulai'), findsNothing);
+
+    // Resep menjadi valid lalu hilang lagi: timer dibuat dan dibuang.
+    await tester.pumpWidget(host(_blend()));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Mulai'), findsOneWidget);
+    await tester.pumpWidget(host(null));
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Mulai'), findsNothing);
+  });
+
+  test('MocktailSpec: kesetaraan nilai untuk daftar sirup dan hiasan', () {
+    final MocktailSpec a = MocktailViewModel.defaultSpec;
+    final MocktailSpec b = a.copyWith();
+    expect(a == b, isTrue);
+    expect(a.hashCode, b.hashCode);
+    expect(a == a.copyWith(servings: 2), isFalse);
+    expect(
+      a ==
+          a.copyWith(
+            syrups: const <MocktailSyrup>[MocktailSyrup('Grenadine', parts: 2)],
+          ),
+      isFalse,
+    );
+    expect(
+      a == a.copyWith(garnishes: const <MocktailGarnish>{MocktailGarnish.mint}),
+      isFalse,
+    );
   });
 }

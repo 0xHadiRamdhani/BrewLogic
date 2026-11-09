@@ -7,7 +7,7 @@ dan suhu, memandu seduhan step-by-step dengan timer, lalu menyimpan resep, biji,
 rating, dan catatan rasa dalam satu jurnal. Semua data tersimpan di perangkat
 (offline, tanpa akun).
 
-Versi saat ini: **1.1.0 (build 2)**.
+Versi saat ini: **1.2.0 (build 3)**.
 
 ## Fitur
 
@@ -22,12 +22,14 @@ Versi saat ini: **1.1.0 (build 2)**.
 - **Brew journal**: catat setiap seduhan dengan rating biji kopi, tag rasa, foto,
   dan catatan. Dikelompokkan per hari (Hari ini, Kemarin), cari dan saring, geser
   untuk menghapus.
-- **Mocktail**: mode "Mocktail" di tab Kalkulator untuk membuat minuman bersirup.
-  Pilih bahan dasar (soda, tonic, ginger ale, air putih, air kelapa, teh dingin),
-  sampai 3 sirup (preset atau buatan sendiri) dengan pembagian bagian, tingkat
-  manis, teknik (langsung atau kocok), es, jeruk nipis, dan hiasan. Takaran per
+- **Mocktail**: mode "Mocktail" di tab Kalkulator (tampilan sama seperti kopi) untuk membuat minuman bersirup.
+  Pilih bahan dasar (soda, tonic, ginger ale, air putih, air kelapa, teh dingin, atau
+  **bahan buatan sendiri** dengan nama, bersoda atau tidak, dan warna cairan),
+  sampai 3 sirup (preset atau buatan sendiri) dengan pembagian bagian dan tingkat
+  manis, atau takaran **ml sendiri** per sirup, teknik (langsung atau kocok), es, jeruk nipis, dan hiasan (bawaan atau **hiasan buatan sendiri**). Takaran per
   porsi dan total dihitung otomatis lengkap dengan langkah pembuatan. Tombol
-  **Mulai Buat Mocktail** membuka timer seperti timer kopi: cincin ganda dengan
+  **Mulai Buat** membuka tab **Timer** (yang isinya mengikuti mode Kopi atau Mocktail)
+  dengan timer seperti timer kopi: cincin ganda dengan
   gelas beranimasi (Lottie) di dalamnya yang terisi sendiri mengikuti langkah
   (es, sirup, jeruk nipis, aduk atau kocok, bahan dasar, hiasan), langkah pindah
   otomatis menurut durasi dengan bunyi dan getaran, tombol Mulai/Jeda/Reset,

@@ -15,7 +15,6 @@ import '../viewmodels/mocktail_viewmodel.dart';
 import '../viewmodels/recipe_viewmodel.dart';
 import 'beans_screen.dart';
 import 'save_brew_screen.dart';
-import 'mocktail_brew_screen.dart';
 import 'widgets/app_button.dart';
 import 'widgets/bean_strip.dart';
 import 'widgets/brew_result_card.dart';
@@ -25,6 +24,8 @@ import 'widgets/glass_card.dart';
 import 'widgets/glass_controls.dart';
 import 'widgets/grams_chip.dart';
 import 'widgets/grams_input_field.dart';
+import 'widgets/mocktail_base_dialog.dart';
+import 'widgets/mocktail_garnish_dialog.dart';
 import 'widgets/mocktail_panel.dart';
 import 'widgets/mocktail_result_card.dart';
 import 'widgets/glass_dialog.dart';
@@ -208,7 +209,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final RecipeViewModel recipes = context.read<RecipeViewModel>();
     final String suggestion =
         '${blend.spec.syrups.first.name} '
-        '${blend.spec.base.label}';
+        '${blend.spec.baseLabel}';
     final String? name = await showPromptDialog(
       context,
       title: 'Simpan resep mocktail',
@@ -278,6 +279,100 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
     mocktail.toggleSyrup(name);
+  }
+
+  Future<void> _addCustomBase() async {
+    final MocktailViewModel mocktail = context.read<MocktailViewModel>();
+    if (!mocktail.canAddCustomBase) {
+      AdaptiveSnackBar.show(
+        context,
+        message:
+            'Maksimal ${MocktailCustomBase.maxSaved} bahan buatan. Tahan '
+            'sebuah bahan untuk menghapusnya.',
+        type: AdaptiveSnackBarType.info,
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    final MocktailCustomBase? base = await showMocktailBaseDialog(
+      context,
+      validator: mocktail.validateBaseName,
+    );
+    if (base == null || !mounted) {
+      return;
+    }
+    final String? error = await mocktail.addCustomBase(base);
+    if (error != null && mounted) {
+      AdaptiveSnackBar.show(
+        context,
+        message: error,
+        type: AdaptiveSnackBarType.error,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteCustomBase(MocktailCustomBase base) async {
+    final MocktailViewModel mocktail = context.read<MocktailViewModel>();
+    final bool confirmed = await showGlassConfirm(
+      context,
+      title: 'Hapus bahan?',
+      message:
+          'Bahan "${base.name}" akan dihapus dari daftar. Resep yang '
+          'memakainya tetap utuh.',
+      confirmLabel: 'Hapus',
+      destructive: true,
+    );
+    if (confirmed) {
+      await mocktail.removeCustomBase(base.name);
+    }
+  }
+
+  Future<void> _addCustomGarnish() async {
+    final MocktailViewModel mocktail = context.read<MocktailViewModel>();
+    if (!mocktail.canAddCustomGarnish) {
+      AdaptiveSnackBar.show(
+        context,
+        message:
+            'Maksimal ${MocktailSpec.maxSavedGarnishes} hiasan buatan. Tahan '
+            'sebuah hiasan untuk menghapusnya.',
+        type: AdaptiveSnackBarType.info,
+        duration: const Duration(seconds: 2),
+      );
+      return;
+    }
+    final String? name = await showMocktailGarnishDialog(
+      context,
+      validator: mocktail.validateGarnishName,
+    );
+    if (name == null || !mounted) {
+      return;
+    }
+    final String? error = await mocktail.addCustomGarnish(name);
+    if (error != null && mounted) {
+      AdaptiveSnackBar.show(
+        context,
+        message: error,
+        type: AdaptiveSnackBarType.error,
+        duration: const Duration(seconds: 2),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteCustomGarnish(String name) async {
+    final MocktailViewModel mocktail = context.read<MocktailViewModel>();
+    final bool confirmed = await showGlassConfirm(
+      context,
+      title: 'Hapus hiasan?',
+      message:
+          'Hiasan "$name" akan dihapus dari daftar. Resep yang memakainya '
+          'tetap utuh.',
+      confirmLabel: 'Hapus',
+      destructive: true,
+    );
+    if (confirmed) {
+      await mocktail.removeCustomGarnish(name);
+    }
   }
 
   void _syrupLimitReached() {
@@ -353,15 +448,34 @@ class _HomeScreenState extends State<HomeScreen> {
           viewModel: mocktailVm,
           onAddCustomSyrup: () => unawaited(_addCustomSyrup()),
           onSyrupLimit: _syrupLimitReached,
+          onAddCustomBase: () => unawaited(_addCustomBase()),
+          onDeleteCustomBase: (MocktailCustomBase b) =>
+              unawaited(_confirmDeleteCustomBase(b)),
         ),
       ),
       const SizedBox(height: 16),
       StaggerIn(
         index: 2,
+        child: MocktailAdjustPanel(
+          viewModel: mocktailVm,
+          onAddCustomGarnish: () => unawaited(_addCustomGarnish()),
+          onDeleteCustomGarnish: (String name) =>
+              unawaited(_confirmDeleteCustomGarnish(name)),
+        ),
+      ),
+      const SizedBox(height: 16),
+      StaggerIn(
+        index: 3,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           transitionBuilder: (Widget child, Animation<double> animation) =>
-              FadeTransition(opacity: animation, child: child),
+              FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.96, end: 1).animate(animation),
+                  child: child,
+                ),
+              ),
           child: blend == null
               ? GlassCard(
                   key: const ValueKey<String>('mocktail-empty'),
@@ -369,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: <Widget>[
                       const Icon(
                         Icons.local_bar_rounded,
-                        color: AppColors.sage,
+                        color: AppColors.caramel,
                         size: 32,
                       ),
                       const SizedBox(width: 16),
@@ -388,32 +502,24 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: <Widget>[
                     MocktailResultCard(blend: blend),
                     const SizedBox(height: 16),
-                    AppButton(
-                      label: 'Mulai Buat Mocktail',
-                      color: AppColors.caramel,
-                      textColor: AppColors.onAccent,
-                      onPressed: () =>
-                          unawaited(MocktailBrewScreen.open(context, blend)),
-                    ),
-                    const SizedBox(height: 12),
                     Row(
                       children: <Widget>[
                         Expanded(
                           child: AppButton(
-                            label: 'Reset',
+                            label: 'Simpan',
                             color: AppColors.secondaryButton,
                             textColor: AppColors.textPrimary,
-                            onPressed: mocktailVm.reset,
+                            onPressed: () => unawaited(_saveMocktail()),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           flex: 2,
                           child: AppButton(
-                            label: 'Simpan ke Resep Saya',
-                            color: AppColors.sage,
+                            label: 'Mulai Buat',
+                            color: AppColors.caramel,
                             textColor: AppColors.onAccent,
-                            onPressed: () => unawaited(_saveMocktail()),
+                            onPressed: widget.onOpenTimer,
                           ),
                         ),
                       ],

@@ -435,3 +435,55 @@ class _Button<T> extends StatelessWidget {
     );
   }
 }
+
+/// Menampilkan dialog kaca dengan isi buatan sendiri (lihat [GlassDialogFrame]).
+Future<T?> showGlassDialog<T>(BuildContext context, WidgetBuilder builder) =>
+    _show<T>(context, builder);
+
+/// Kerangka dialog kaca dengan isi bebas dan dua tombol: batal dan
+/// konfirmasi. [onConfirm] yang menutup dialog (mis. dengan hasil isian) dan
+/// bisa menolak bila isiannya belum valid.
+class GlassDialogFrame extends StatelessWidget {
+  const GlassDialogFrame({
+    super.key,
+    required this.title,
+    required this.confirmLabel,
+    required this.onConfirm,
+    this.message,
+    this.body,
+    this.cancelLabel = 'Batal',
+  });
+
+  final String title;
+  final String? message;
+  final Widget? body;
+  final String confirmLabel;
+  final String cancelLabel;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    return _Frame(
+      title: title,
+      message: message,
+      body: body,
+      actions: <Widget>[
+        _ActionRow(
+          children: <Widget>[
+            _Button<Object?>(
+              action: GlassDialogAction<Object?>(label: cancelLabel),
+              dismissOnly: true,
+            ),
+            _Button<Object?>(
+              action: GlassDialogAction<Object?>(
+                label: confirmLabel,
+                style: GlassDialogStyle.primary,
+              ),
+              onPressedOverride: onConfirm,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}

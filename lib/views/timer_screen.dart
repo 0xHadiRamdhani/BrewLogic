@@ -6,14 +6,17 @@ import '../core/theme/app_theme.dart';
 import '../core/utils/formatters.dart';
 import '../models/brew_model.dart';
 import '../viewmodels/brew_viewmodel.dart';
+import '../viewmodels/mocktail_viewmodel.dart';
 import '../viewmodels/settings_viewmodel.dart';
 import 'save_brew_screen.dart';
 import 'widgets/app_button.dart';
 import 'widgets/brew_timer_panel.dart';
 import 'widgets/glass_card.dart';
+import 'widgets/mocktail_timer_view.dart';
 import 'widgets/motion.dart';
 
-/// Tab Timer: seduh step-by-step (Bloom → First Pour → Second Pour).
+/// Tab Timer: seduh step-by-step (Bloom → First Pour → Second Pour). Di mode
+/// Mocktail isinya timer membuat mocktail.
 class TimerScreen extends StatelessWidget {
   const TimerScreen({super.key, required this.onOpenJournal});
 
@@ -28,6 +31,11 @@ class TimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MocktailViewModel mocktail = context.watch<MocktailViewModel>();
+    if (mocktail.isActive) {
+      return MocktailTimerView(blend: mocktail.blend);
+    }
+
     final BrewViewModel vm = context.watch<BrewViewModel>();
     final BrewCalculation? calc = vm.calculation;
     final bool finished = vm.timerStatus == BrewTimerStatus.finished;

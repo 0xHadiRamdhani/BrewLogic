@@ -149,7 +149,7 @@ class _StripItem {
 
   IconData get icon =>
       coffee != null ? Icons.coffee_rounded : Icons.local_bar_rounded;
-  Color get accent => coffee != null ? AppColors.caramel : AppColors.sage;
+  Color get accent => AppColors.caramel;
   String get semanticLabel =>
       coffee != null ? 'Resep $title' : 'Resep mocktail $title';
 }

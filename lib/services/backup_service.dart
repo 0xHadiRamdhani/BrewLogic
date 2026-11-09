@@ -224,15 +224,27 @@ class BackupService {
     'servings': m.spec.servings,
     'glassMl': m.spec.glassMl,
     'base': m.spec.base.name,
+    if (m.spec.customBase != null)
+      'customBase': <String, Object?>{
+        'name': m.spec.customBase!.name,
+        'sparkling': m.spec.customBase!.sparkling,
+        'color': m.spec.customBase!.color,
+      },
     'sweetness': m.spec.sweetness.name,
     'method': m.spec.method.name,
     'useIce': m.spec.useIce,
     'useCitrus': m.spec.useCitrus,
     'syrups': <Object?>[
       for (final MocktailSyrup s in m.spec.syrups)
-        <String, Object?>{'name': s.name, 'parts': s.parts},
+        <String, Object?>{
+          'name': s.name,
+          'parts': s.parts,
+          if (s.ml != null) 'ml': s.ml,
+        },
     ],
     'garnishes': m.spec.garnishes.map((MocktailGarnish g) => g.name).toList(),
+    if (m.spec.customGarnishes.isNotEmpty)
+      'customGarnishes': m.spec.customGarnishes.toList(),
   };
 
   static Map<String, Object?> _beanToJson(BrewBean b) => <String, Object?>{
@@ -316,6 +328,21 @@ class BackupService {
     );
   }
 
+  static MocktailCustomBase? _customBaseFromJson(Object? raw) {
+    if (raw is! Map<String, Object?>) {
+      return null;
+    }
+    final String? name = _str(raw['name']);
+    if (name == null) {
+      return null;
+    }
+    return MocktailCustomBase(
+      _cut(name.trim(), MocktailCustomBase.maxNameLength),
+      sparkling: raw['sparkling'] is bool && raw['sparkling']! as bool,
+      color: _int(raw['color']) ?? MocktailCustomBase.defaultColor,
+    );
+  }
+
   static MocktailRecipe? _mocktailFromJson(Map<String, Object?> j) {
     final String? id = _str(j['id']);
     final String? name = _str(j['name']);
@@ -343,6 +370,8 @@ class BackupService {
             MocktailSpec.minParts,
             MocktailSpec.maxParts,
           ),
+          ml: _positive(item['ml'])
+              ?.clamp(MocktailSpec.minSyrupMl, MocktailSpec.maxSyrupMl),
         ),
       );
     }
@@ -350,6 +379,7 @@ class BackupService {
       return null;
     }
     final Object? rawGarnishes = j['garnishes'];
+    final Object? rawCustomGarnishes = j['customGarnishes'];
     return MocktailRecipe(
       id: id,
       name: _cut(name, _maxName),
@@ -364,6 +394,7 @@ class BackupService {
           MocktailSpec.maxGlassMl,
         ),
         base: _enum(MocktailBase.values, j['base']) ?? MocktailBase.soda,
+        customBase: _customBaseFromJson(j['customBase']),
         sweetness:
             _enum(MocktailSweetness.values, j['sweetness']) ??
             MocktailSweetness.normal,
@@ -371,11 +402,19 @@ class BackupService {
             _enum(MocktailMethod.values, j['method']) ?? MocktailMethod.build,
         useIce: j['useIce'] is bool ? j['useIce']! as bool : true,
         useCitrus: j['useCitrus'] is bool ? j['useCitrus']! as bool : true,
-        syrups: syrups,
+        syrups: MocktailSyrup.normalized(syrups),
         garnishes: <MocktailGarnish>{
           if (rawGarnishes is List<Object?>)
             for (final Object? g in rawGarnishes)
               ?_enum(MocktailGarnish.values, g),
+        },
+        customGarnishes: <String>{
+          if (rawCustomGarnishes is List<Object?>)
+            for (final Object? g in rawCustomGarnishes.take(
+              MocktailSpec.maxSavedGarnishes,
+            ))
+              if (_str(g) case final String name)
+                _cut(name.trim(), MocktailSpec.maxGarnishNameLength),
         },
       ),
     );
