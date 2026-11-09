@@ -15,6 +15,7 @@ import '../viewmodels/mocktail_viewmodel.dart';
 import '../viewmodels/recipe_viewmodel.dart';
 import 'beans_screen.dart';
 import 'save_brew_screen.dart';
+import 'mocktail_brew_screen.dart';
 import 'widgets/app_button.dart';
 import 'widgets/bean_strip.dart';
 import 'widgets/brew_result_card.dart';
@@ -387,6 +388,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: <Widget>[
                     MocktailResultCard(blend: blend),
                     const SizedBox(height: 16),
+                    AppButton(
+                      label: 'Mulai Buat Mocktail',
+                      color: AppColors.caramel,
+                      textColor: AppColors.onAccent,
+                      onPressed: () =>
+                          unawaited(MocktailBrewScreen.open(context, blend)),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: <Widget>[
                         Expanded(

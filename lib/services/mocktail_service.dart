@@ -95,7 +95,7 @@ class MocktailService {
     return MocktailBlend(
       spec: spec,
       ingredients: ingredients,
-      steps: _steps(spec, syrupAmounts, citrusRounded, baseMl),
+      stepDetails: _steps(spec, syrupAmounts, citrusRounded, baseMl),
       liquidMl: liquid,
       syrupMl: syrupRounded,
     );
@@ -118,7 +118,7 @@ class MocktailService {
 
   String _ml(double value) => '${formatGrams(value)} ml';
 
-  List<String> _steps(
+  List<MocktailStep> _steps(
     MocktailSpec spec,
     List<double> syrupAmounts,
     double citrus,
@@ -129,49 +129,111 @@ class MocktailService {
         '${spec.syrups[i].name} ${_ml(syrupAmounts[i])}',
     ].join(', ');
     final String ice = 'es batu (± ${formatGrams(_iceGrams(spec.glassMl))} g)';
-    final String pour = spec.base.sparkling
-        ? 'Tuang ${spec.base.ingredient.toLowerCase()} ${_ml(baseMl)} '
-              'perlahan lewat sendok bar agar gelembung tetap awet dan '
-              'warnanya bergradasi.'
-        : 'Tuang ${spec.base.ingredient.toLowerCase()} ${_ml(baseMl)} '
-              'hingga penuh.';
+    final String baseName = spec.base.ingredient.toLowerCase();
+    final String citrusText = citrus > 0
+        ? 'perasan jeruk nipis ${_ml(citrus)}'
+        : '';
 
-    final List<String> steps = <String>[];
+    final List<MocktailStep> steps = <MocktailStep>[];
     if (spec.method == MocktailMethod.shake) {
       steps
         ..add(
-          'Masukkan $syrupList${citrus > 0 ? ', perasan jeruk nipis '
-                    '${_ml(citrus)}' : ''} dan segenggam es ke shaker.',
+          MocktailStep(
+            kind: MocktailStepKind.mixIn,
+            title: 'Masukkan bahan',
+            text:
+                'Masukkan $syrupList${citrus > 0 ? ', $citrusText' : ''} dan '
+                'segenggam es ke shaker.',
+            durationSeconds: 15,
+          ),
         )
-        ..add('Kocok kuat 10–12 detik sampai shaker terasa dingin.')
         ..add(
-          spec.useIce
-              ? 'Saring ke gelas berisi $ice.'
-              : 'Saring ke gelas yang sudah didinginkan.',
+          const MocktailStep(
+            kind: MocktailStepKind.shake,
+            title: 'Kocok',
+            text: 'Kocok kuat 10–12 detik sampai shaker terasa dingin.',
+            durationSeconds: 12,
+          ),
+        )
+        ..add(
+          MocktailStep(
+            kind: MocktailStepKind.strain,
+            title: 'Saring',
+            text: spec.useIce
+                ? 'Saring ke gelas berisi $ice.'
+                : 'Saring ke gelas yang sudah didinginkan.',
+            durationSeconds: 8,
+          ),
         );
     } else {
       if (spec.useIce) {
-        steps.add('Isi gelas dengan $ice.');
+        steps.add(
+          MocktailStep(
+            kind: MocktailStepKind.ice,
+            title: 'Isi es',
+            text: 'Isi gelas dengan $ice.',
+            durationSeconds: 8,
+          ),
+        );
       }
-      steps.add('Tuang sirup: $syrupList.');
+      steps.add(
+        MocktailStep(
+          kind: MocktailStepKind.syrup,
+          title: 'Tuang sirup',
+          text: 'Tuang sirup: $syrupList.',
+          durationSeconds: 8,
+        ),
+      );
       if (citrus > 0) {
-        steps.add('Tambahkan perasan jeruk nipis ${_ml(citrus)}.');
+        steps.add(
+          MocktailStep(
+            kind: MocktailStepKind.citrus,
+            title: 'Tambah jeruk nipis',
+            text: 'Tambahkan perasan jeruk nipis ${_ml(citrus)}.',
+            durationSeconds: 6,
+          ),
+        );
       }
-      steps.add('Aduk 5 detik hingga sirup larut.');
+      steps.add(
+        const MocktailStep(
+          kind: MocktailStepKind.stir,
+          title: 'Aduk',
+          text: 'Aduk 5 detik hingga sirup larut.',
+          durationSeconds: 5,
+        ),
+      );
     }
-    steps.add(pour);
+    steps.add(
+      MocktailStep(
+        kind: MocktailStepKind.base,
+        title: 'Tuang ${spec.base.label.toLowerCase()}',
+        text: spec.base.sparkling
+            ? 'Tuang $baseName ${_ml(baseMl)} perlahan lewat sendok bar agar '
+                  'gelembung tetap awet dan warnanya bergradasi.'
+            : 'Tuang $baseName ${_ml(baseMl)} hingga penuh.',
+        durationSeconds: spec.base.sparkling ? 15 : 10,
+      ),
+    );
     if (spec.garnishes.isNotEmpty) {
       final String names = spec.garnishes
           .map((MocktailGarnish g) => g.label.toLowerCase())
           .join(', ');
-      steps.add('Hias dengan $names, lalu sajikan segera.');
-    } else {
-      steps.add('Sajikan segera selagi dingin.');
-    }
-    if (spec.servings > 1) {
       steps.add(
-        'Ulangi untuk ${spec.servings} porsi, atau kalikan takaran di '
-        'atas bila memakai pitcher.',
+        MocktailStep(
+          kind: MocktailStepKind.garnish,
+          title: 'Hias & sajikan',
+          text: 'Hias dengan $names, lalu sajikan segera.',
+          durationSeconds: 8,
+        ),
+      );
+    } else {
+      steps.add(
+        const MocktailStep(
+          kind: MocktailStepKind.garnish,
+          title: 'Sajikan',
+          text: 'Sajikan segera selagi dingin.',
+          durationSeconds: 5,
+        ),
       );
     }
     return steps;

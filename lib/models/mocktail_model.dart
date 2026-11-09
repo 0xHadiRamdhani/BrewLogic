@@ -190,20 +190,93 @@ class MocktailIngredient {
   final int? color;
 }
 
+/// Jenis langkah; menentukan bagian animasi gelas yang diputar.
+enum MocktailStepKind {
+  /// Shaker: bahan dimasukkan.
+  mixIn,
+
+  /// Shaker: dikocok.
+  shake,
+
+  /// Shaker: disaring ke gelas (es, sirup, dan jeruk nipis masuk gelas).
+  strain,
+  ice,
+  syrup,
+  citrus,
+
+  /// Mengaduk dengan sendok bar.
+  stir,
+  base,
+  garnish,
+}
+
+/// Satu langkah pembuatan untuk satu gelas. [durationSeconds] adalah takaran
+/// waktu yang disarankan; timer pindah otomatis ke langkah berikutnya.
+@immutable
+class MocktailStep {
+  const MocktailStep({
+    required this.kind,
+    required this.title,
+    required this.text,
+    required this.durationSeconds,
+  });
+
+  final MocktailStepKind kind;
+  final String title;
+  final String text;
+  final int durationSeconds;
+}
+
 /// Hasil hitungan: bahan per porsi dan langkah pembuatan.
 @immutable
 class MocktailBlend {
   const MocktailBlend({
     required this.spec,
     required this.ingredients,
-    required this.steps,
+    required this.stepDetails,
     required this.liquidMl,
     required this.syrupMl,
   });
 
   final MocktailSpec spec;
   final List<MocktailIngredient> ingredients;
-  final List<String> steps;
+
+  /// Langkah untuk membuat satu gelas.
+  final List<MocktailStep> stepDetails;
+
+  /// Total durasi satu gelas (detik).
+  int get totalSeconds => stepDetails.fold<int>(
+    0,
+    (int sum, MocktailStep s) => sum + s.durationSeconds,
+  );
+
+  /// Waktu mulai langkah ke-[index] dalam satu gelas.
+  Duration stepStartOf(int index) => Duration(
+    seconds: stepDetails
+        .take(index)
+        .fold<int>(0, (int sum, MocktailStep s) => sum + s.durationSeconds),
+  );
+
+  /// Indeks langkah pada waktu [elapsed]; langkah terakhir bila sudah lewat.
+  int stepIndexAt(Duration elapsed) {
+    int start = 0;
+    for (int i = 0; i < stepDetails.length; i++) {
+      start += stepDetails[i].durationSeconds * 1000;
+      if (elapsed.inMilliseconds < start) {
+        return i;
+      }
+    }
+    return stepDetails.length - 1;
+  }
+
+  /// Teks langkah untuk kartu hasil; ditambah catatan bila lebih dari satu
+  /// porsi.
+  List<String> get steps => <String>[
+    for (final MocktailStep s in stepDetails) s.text,
+    if (spec.servings > 1)
+      'Ulangi untuk ${spec.servings} porsi, atau kalikan takaran di atas '
+          'bila memakai pitcher.',
+  ];
 
   /// Cairan per porsi di luar es.
   final double liquidMl;

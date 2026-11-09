@@ -26,7 +26,14 @@ Versi saat ini: **1.1.0 (build 2)**.
   Pilih bahan dasar (soda, tonic, ginger ale, air putih, air kelapa, teh dingin),
   sampai 3 sirup (preset atau buatan sendiri) dengan pembagian bagian, tingkat
   manis, teknik (langsung atau kocok), es, jeruk nipis, dan hiasan. Takaran per
-  porsi dan total dihitung otomatis lengkap dengan langkah pembuatan.
+  porsi dan total dihitung otomatis lengkap dengan langkah pembuatan. Tombol
+  **Mulai Buat Mocktail** membuka timer seperti timer kopi: cincin ganda dengan
+  gelas beranimasi (Lottie) di dalamnya yang terisi sendiri mengikuti langkah
+  (es, sirup, jeruk nipis, aduk atau kocok, bahan dasar, hiasan), langkah pindah
+  otomatis menurut durasi dengan bunyi dan getaran, tombol Mulai/Jeda/Reset,
+  daftar langkah yang bisa dilompati, daftar bahan yang bisa dicentang, dan
+  pengulangan per gelas bila lebih dari satu porsi. Warna sirup dan bahan dasar
+  serta hiasan mengikuti resep.
 - **Resep Saya**: simpan resep kopi maupun mocktail dalam satu daftar (ketuk untuk
   memuat, tahan untuk menghapus).
 - **Perpustakaan biji** (termasuk kesegaran biji).

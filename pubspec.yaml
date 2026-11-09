@@ -45,6 +45,7 @@ flutter:
     - assets/images/developer.jpg
     - assets/images/icons.jpg
     - assets/animations/pour.json
+    - assets/animations/mocktail.json
     - assets/sounds/phase.wav
     - assets/sounds/done.wav
   fonts:

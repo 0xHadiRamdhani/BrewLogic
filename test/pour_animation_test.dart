@@ -21,9 +21,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('berkas pour.json valid: 240x225, 150 frame, ada aliran dan uap', () {
-    final Map<String, dynamic> json =
-        jsonDecode(File(PourAnimation.asset).readAsStringSync())
-            as Map<String, dynamic>;
+    final Map<String, dynamic> json = jsonDecode(
+      File(PourAnimation.asset).readAsStringSync(),
+    ) as Map<String, dynamic>;
     expect(json['w'], 240);
     expect(json['h'], 225);
     expect(json['op'], 150);
